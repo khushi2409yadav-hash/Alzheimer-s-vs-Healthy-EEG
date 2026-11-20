@@ -1,61 +1,78 @@
 # Alzheimer's vs healthy EEG
-
-Classifying people as Alzheimer's or healthy from their resting EEG, using brain-wave power features.
+Alzheimer's recordings show slower brain waves, strongest at the back of the head. A logistic regression on 33 EEG features reached about 80% accuracy (AUC 0.86) with person-wise cross-validation on 65 people.
 
 ## Data
 
-The data is from OpenNeuro, dataset ds004504 (Miltiadous et al., 2023). It has resting EEG recorded with 19 electrodes while people sat with their eyes closed. There are 88 people in three groups:
+I used the public OpenNeuro dataset **ds004504**: resting-state, eyes-closed EEG recorded with 19 scalp electrodes. I used the cleaned (preprocessed) files from the dataset's `derivatives` folder, and I kept two groups:
 
-- 36 with Alzheimer's
-- 23 with frontotemporal dementia
-- 29 healthy
+- 36 people with Alzheimer's
+- 29 healthy people
 
-I used only the Alzheimer's and healthy groups, so 65 people in total. The frontotemporal group is not used. The average age is similar in both groups (66 and 68).
+## What I did
 
-## The idea
+1. Cut every recording into 20-second pieces.
+2. Computed 33 features for each piece (listed below).
+3. Averaged the pieces so each person has one row of features.
+4. Compared the two groups feature by feature, with a Mann-Whitney test and a correction for testing many features at once (Benjamini-Hochberg).
+5. Trained models and tested them with 5-fold cross-validation repeated 10 times. Each person is one row, so nobody is in both the training and test set.
 
-Alzheimer's is linked to slower brain waves. So for each person I measure how strong each type of wave is and give those numbers to a model. Each person becomes 23 numbers:
+**The 33 features**
 
-- how much delta, theta, alpha and beta waves there are, in 5 brain areas (20 numbers)
-- two slowing ratios: theta / alpha and (delta + theta) / (alpha + beta)
-- the speed of the main alpha wave at the back of the head
-
-## How I tested it
-
-Each person is one row, so every test is on people the model has not seen. I used 5-fold cross-validation, repeated 10 times.
+| Group | How many | What it is |
+|---|---|---|
+| Relative band power | 20 | Share of total power in delta, theta, alpha and beta, for 5 brain regions (frontal, central, temporal, parietal, occipital) |
+| Slowing ratios | 2 | Theta/alpha ratio, and (delta+theta)/(alpha+beta). Higher means slower brain waves |
+| Alpha peak frequency | 1 | The speed of the strongest alpha wave at the back of the head |
+| Alpha coherence | 10 | How in sync alpha waves are between each pair of regions |
 
 ## Results
 
-| Model | Accuracy |
-|---|---|
-| Logistic regression | 79.5% |
-| SVM | 78.2% |
-| Random forest | 73.4% |
+### The brain waves are slower in Alzheimer's
 
-Confusion matrix for logistic regression:
+23 of the 33 features differed between the groups after correction. The age of the two groups was similar (66.4 vs 67.9 years, p = 0.38), so this is not just an age effect.
 
-![confusion matrix](alz_confusion_matrix.png)
+| | Healthy (median) | Alzheimer's (median) |
+|---|---|---|
+| Occipital alpha (share of power) | 8.3% | 2.5% |
+| Alpha peak frequency | 8.9 Hz | 6.7 Hz |
+| Theta/alpha ratio | 1.65 | 2.93 |
 
-29 of 36 Alzheimer's people and 22 of 29 healthy people were found correctly.
+![Average spectrum](alz_spectrum.png)
 
-## Libraries
+### Where it happens
 
-- MNE: reads the EEG files and filters the signal
-- SciPy: `welch` gives the power at each frequency
-- NumPy and pandas: arrays and tables
-- scikit-learn: the models and the testing
-- Matplotlib: the plots
-- openneuro-py: downloads the data
+The effect is strongest at the back of the head: much less alpha (Cohen's d = -1.27) and more delta (d = +1.06) in the occipital area. The front mainly shows extra theta (d = +0.76).
+
+![Effect size by region](alz_effect_size.png)
+
+### Can a model tell them apart?
+
+| Model | Accuracy | AUC |
+|---|---|---|
+| Always guess the bigger group | 55.4% | 0.50 |
+| Age only | 50.8% | not computed |
+| Logistic regression | 79.5% (± 10.9) | 0.86 |
+| SVM | 75.2% (± 13.1) | 0.85 |
+| Random forest | 73.1% (± 11.6) | 0.84 |
+
+The three models score about the same, and the differences are smaller than the spread between splits, so I don't claim one is better. The age-only model is at chance level, which tells me the models are not just learning age.
+
+In one 5-fold run with logistic regression, the model found 31 of 36 Alzheimer's people and correctly cleared 21 of 29 healthy people.
+
+![Confusion matrix](alz_confusion_matrix.png)
+
+### What the model relied on
+
+I averaged the logistic regression coefficients over the cross-validation folds. Occipital alpha, occipital delta, the alpha peak, theta power and parieto-occipital coherence came out near the top. Many features are correlated with each other (relative powers add up to 100%), so I read this as "these features work together" and not as a ranking of single biomarkers.
+
+![Top features](alz_importance.png)
 
 
-## Future scope
+## Limitations
 
-The model could be made more reliable by:
+- Parieto-occipital alpha coherence was *higher* in Alzheimer's, which I did not expect. I don't know the reason yet. It could be the slowed rhythm falling inside the 8-13 Hz window, or signal spreading through the skull. I did not test this.
+- I computed coherence between region averages, which is sensitive to signal spreading (volume conduction).
+- The same features could not separate Alzheimer's from frontotemporal dementia in a quick test, so I left that out of this project.
 
-- adding connectivity features, which measure how much different parts of the brain move together
-- bringing in the frontotemporal dementia group for a three-way classification
-- testing on a second dataset from a different lab
-
-## Run it
-
-Open the notebook in Google Colab and run the cells from the top. It downloads the data by itself (about 2 GB).
+## Python libraries
+numpy, pandas, scipy, scikit-learn, matplotlib, mne, openneuro-py.
