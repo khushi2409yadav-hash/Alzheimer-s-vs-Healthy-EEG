@@ -37,13 +37,13 @@ I used the public OpenNeuro dataset **ds004504**: resting-state, eyes-closed EEG
 | Alpha peak frequency | 8.9 Hz | 6.7 Hz |
 | Theta/alpha ratio | 1.65 | 2.93 |
 
-![Average spectrum]("average_spectrum.png")
+![Average Spectrum](OUTPUT_images/average_spectrum.png)
 
 ### Where it happens
 
 The effect is strongest at the back of the head: much less alpha (Cohen's d = -1.27) and more delta (d = +1.06) in the occipital area. The front mainly shows extra theta (d = +0.76).
 
-![Effect size by region]("C:\Users\HP\Pictures\Screenshots\effect_on_size.png")
+![Effect on Size](OUTPUT_images/effect_on_size.png)
 
 ### Can a model tell them apart?
 
@@ -59,13 +59,13 @@ The three models score about the same, and the differences are smaller than the 
 
 In one 5-fold run with logistic regression, the model found 31 of 36 Alzheimer's people and correctly cleared 21 of 29 healthy people.
 
-![Confusion matrix]("C:\Users\HP\Pictures\Screenshots\confusion_matrix.png")
+![Confusion Matrix](OUTPUT_images/confusion_matrix.png)
 
 ### What the model relied on
 
 I averaged the logistic regression coefficients over the cross-validation folds. Occipital alpha, occipital delta, the alpha peak, theta power and parieto-occipital coherence came out near the top. Many features are correlated with each other (relative powers add up to 100%), so I read this as "these features work together" and not as a ranking of single biomarkers.
 
-![Top features]("C:\Users\HP\Pictures\Screenshots\top_features.png")
+![Top Features](OUTPUT_images/top_features.png)
 
 
 ## Limitations
